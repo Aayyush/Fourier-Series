@@ -6,12 +6,15 @@ let y = [];
 let fourierY;
 let fourierX;
 
+// Track state of the drawing board. 
 const USER = 0;
 const FOURIER = 1;
-
-let drawing = [];
 let state = -1; 
 
+// Array of vectors (drawing points).
+let drawing = [];
+
+// Change state to USER and reset all drawing data.
 function mousePressed() {
   state = USER; 
   drawing = [];
@@ -73,9 +76,11 @@ function draw() {
   background(0);
 
   if (state == USER) {
+    // Store mouse co-ordinates in the drawing array. 
     let point = createVector(mouseX - width/2, mouseY-height/2)
     drawing.push(point);
 
+    // Plot the mouse motion. 
     stroke(255);
     noFill();
     beginShape();

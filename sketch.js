@@ -1,40 +1,41 @@
 let time = 0;
-let wave = [];
+let path = [];
+
+let x = [];
 let y = [];
 let fourierY;
-
-let NUM_MARKERS = 10;
+let fourierX;
 
 function setup() {
-  createCanvas(600, 400);
-
-  let angle = 0;
-  for (let i = 0; i < 100; i++){
-    y[i] = 100*noise(angle);
-    angle += TWO_PI/100;
+  createCanvas(800, 600);
+  
+  // Scale down the data set by factor of skip. 
+  const skip = 10; 
+  for (let i = 0; i < drawing.length; i += skip){
+    x.push(drawing[i].x);
+    y.push(drawing[i].y);
   }
+  fourierX = dft(x);
   fourierY = dft(y);
+
+  // Sort by amplitude for better rendering using epicycles. 
+  fourierX.sort((a, b) => b.amp - a.amp);
+  fourierY.sort((a, b) => b.amp - a.amp);
 }
 
-function draw() {
-  background(0);
-  translate(200, 200);
-
-  let x = 0;
-  let y = 0; 
-
-  for (let i = 0; i < fourierY.length; i++) {
+function epiCycles(x, y, rotation, fourier){
+  for (let i = 0; i < fourier.length; i++) {
     let prev_x = x; 
     let prev_y = y; 
 
     // Calculate the params. 
-    let freq = fourierY[i].freq;
-    let radius = fourierY[i].amp;
-    let phase = fourierY[i].phase;
+    let freq = fourier[i].freq;
+    let radius = fourier[i].amp;
+    let phase = fourier[i].phase;
 
     // Using fourier series formula. 
-    x += radius * cos(freq * time + phase + HALF_PI);
-    y += radius * sin(freq * time + phase + HALF_PI);
+    x += radius * cos(freq * time + phase + rotation);
+    y += radius * sin(freq * time + phase + rotation);
 
     // Draw the circle centered at prev_x and prev_y. 
     stroke(255, 100);
@@ -46,18 +47,29 @@ function draw() {
     line(prev_x, prev_y, x, y);
   }
 
-  // Prepend the new y value to the wave array. 
-  wave.unshift(y);
+  return createVector(x, y)
+}
 
-  // Move the graph to the right. 
-  translate(200, 0);
-  line(x-200, y, 0, wave[0]);
+function draw() {
+  background(0);
+  
+  // Calculate the next set of points in the path. 
+  let vx = epiCycles(width/2, 100, 0, fourierX);
+  let vy = epiCycles(100, height/2, HALF_PI, fourierY)
+  let v = createVector(vx.x, vy.y) 
+
+  // Prepend the new y value to the wave array. 
+  path.unshift(v);
+
+  // Draw line
+  line(vx.x, vx.y, v.x, v.y)
+  line(vy.x, vy.y, v.x, v.y)
 
   // Draw the graph using the final values of y. 
   beginShape();
   noFill();
-  for (let i = 0; i < wave.length; i++){
-    vertex(i, wave[i]);
+  for (let i = 0; i < path.length; i++){
+    vertex(path[i].x, path[i].y);
   }
   endShape();
 
@@ -65,8 +77,9 @@ function draw() {
   const dt = TWO_PI/fourierY.length;
   time += dt; 
 
-  // Ensure the array does not go out of bounds. 
-  if (wave.length > 250){
-    wave.pop();
+  // Reset when a full cycle is complete. 
+  if (time > TWO_PI) {
+    time = 0;
+    path = [];
   }
 }
